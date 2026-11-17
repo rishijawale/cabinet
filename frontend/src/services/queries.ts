@@ -10,6 +10,7 @@ import {
   fetchRandomArtwork,
 } from "./api/archive";
 import { fetchFavorites } from "./api/account";
+import { fetchMySubmissions } from "./api/engagement";
 import { useAuth } from "../hooks/useAuth";
 
 export const queryKeys = {
@@ -20,6 +21,7 @@ export const queryKeys = {
   collections: ["collections"] as const,
   collection: (slug: string) => ["collection", slug] as const,
   favorites: ["favorites"] as const,
+  mySubmissions: ["submissions", "me"] as const,
 };
 
 export function useArtworks(query: ArtworkQuery) {
@@ -77,6 +79,16 @@ export function useFavorites() {
   return useQuery({
     queryKey: queryKeys.favorites,
     queryFn: fetchFavorites,
+    enabled: status === "signedIn",
+  });
+}
+
+/** The signed-in member's own submissions; disabled until they exist. */
+export function useMySubmissions() {
+  const { status } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.mySubmissions,
+    queryFn: () => fetchMySubmissions(),
     enabled: status === "signedIn",
   });
 }

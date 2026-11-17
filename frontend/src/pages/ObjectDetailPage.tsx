@@ -6,6 +6,7 @@ import {
   Check,
   Download,
   ExternalLink,
+  Flag,
   Link2,
   Loader2,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import {
 } from "../lib/format";
 import { requestDownload } from "../services/api/archive";
 import { addFavorite, removeFavorite } from "../services/api/account";
+import { reportArtwork } from "../services/api/engagement";
 import { queryKeys, useArtwork, useFavorites } from "../services/queries";
 import type { Artwork, ArtworkDetail, DownloadInfo } from "../types/api";
 
@@ -39,6 +41,14 @@ type DownloadState =
   | { status: "loading" }
   | { status: "ready"; info: DownloadInfo }
   | { status: "error"; message: string };
+
+const REPORT_REASONS = [
+  "Wrong attribution",
+  "Not the creator's work",
+  "License problem",
+  "Inappropriate content",
+  "Something else",
+];
 
 export function ObjectDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -49,6 +59,10 @@ export function ObjectDetailPage() {
   const queryClient = useQueryClient();
   const [download, setDownload] = useState<DownloadState>({ status: "idle" });
   const [copied, setCopied] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportState, setReportState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   const signedIn = status === "signedIn";
 
@@ -146,6 +160,20 @@ export function ObjectDetailPage() {
     }
   }
 
+  async function handleReport() {
+    if (!data || reportState === "sending") return;
+    setReportState("sending");
+    try {
+      await reportArtwork(data.slug, {
+        reason: reportReason,
+        details: reportDetails.trim() || undefined,
+      });
+      setReportState("sent");
+    } catch {
+      setReportState("error");
+    }
+  }
+
   if (artwork.isLoading) return <ObjectSkeleton />;
 
   if (artwork.isError || !data) {
@@ -239,8 +267,95 @@ export function ObjectDetailPage() {
                     ? "Saved"
                     : "Save"}
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setReportOpen((open) => !open);
+                  setReportState("idle");
+                }}
+                aria-expanded={reportOpen}
+                className={cn(
+                  "inline-flex h-9 items-center gap-2 border px-3 text-[12px] transition-colors",
+                  reportOpen
+                    ? "border-ink text-ink"
+                    : "border-line text-muted hover:border-ink hover:text-ink",
+                )}
+              >
+                <Flag className="h-3.5 w-3.5" />
+                Report
+              </button>
             </div>
           </div>
+
+          {reportOpen && (
+            <div className="mt-2 border border-line bg-surface p-4">
+              {reportState === "sent" ? (
+                <p className="text-[12px] leading-5 text-muted">
+                  <Check className="mr-1.5 inline h-3.5 w-3.5 text-accent" aria-hidden="true" />
+                  Thanks. A curator will take a look.
+                </p>
+              ) : (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleReport();
+                  }}
+                  className="flex flex-col gap-3"
+                >
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="report-reason" className="label-tight">
+                      What is wrong?
+                    </label>
+                    <select
+                      id="report-reason"
+                      value={reportReason}
+                      onChange={(event) => setReportReason(event.target.value)}
+                      className="h-9 border border-line bg-transparent px-2 text-[13px] text-ink outline-none transition-colors focus:border-ink"
+                    >
+                      {REPORT_REASONS.map((reason) => (
+                        <option key={reason} value={reason}>
+                          {reason}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="report-details" className="label-tight">
+                      Details <span className="text-muted">(optional)</span>
+                    </label>
+                    <textarea
+                      id="report-details"
+                      rows={2}
+                      maxLength={2000}
+                      value={reportDetails}
+                      onChange={(event) => setReportDetails(event.target.value)}
+                      placeholder="Anything a curator should know."
+                      className="border border-line bg-surface px-3 py-2 text-[13px] leading-5 text-ink outline-none transition-colors placeholder:text-muted focus:border-ink"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="submit"
+                      disabled={reportState === "sending"}
+                      className={buttonStyles({ size: "sm" })}
+                    >
+                      {reportState === "sending" ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Flag className="h-3.5 w-3.5" />
+                      )}
+                      {reportState === "sending" ? "Sending…" : "Send report"}
+                    </button>
+                    {reportState === "error" && (
+                      <p className="text-[12px] text-accent">
+                        The report could not be sent. Try again.
+                      </p>
+                    )}
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
 
           {data.media_type === "text" && (
             <p className="mt-6 border-l-2 border-accent pl-4 text-[12px] leading-6 text-muted">

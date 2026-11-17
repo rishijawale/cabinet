@@ -7,12 +7,7 @@ const PAGES: Record<string, { label: string; title: string; body: string }> = {
   "/studio": {
     label: "Studio",
     title: "The studio is being prepared.",
-    body: "A place to publish, arrange and care for objects in the archive. The archive itself stays open while we build it — accounts, submissions and curation tools arrive in the next milestone.",
-  },
-  "/submit": {
-    label: "Submit",
-    title: "Submissions open soon.",
-    body: "Cabinet is built with contributors, not scraped from them. The submission workflow is being prepared so that every object arrives with permission, attribution and the right license attached.",
+    body: "A place to publish, arrange and care for objects in the archive. The archive itself stays open while we build it — curation tools arrive with the moderation milestone.",
   },
 };
 

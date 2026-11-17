@@ -143,7 +143,7 @@ src/
 | `/saved` | Saved objects (account or local storage) |
 | `/login` | Sign-in page (magic link) |
 | `/about`, `/guidelines`, `/licenses`, `/privacy`, `/terms` | Editorial and legal pages |
-| `/studio`, `/submit` | Coming-soon pages |
+| `/studio`, `/submit` | Submit: the real proposal form (gated on accounts); Studio is still coming soon |
 | `*` | Not-found page |
 
 All routes render inside `RootLayout`, which provides the header, mobile navigation, footer and theme handling.
@@ -191,7 +191,8 @@ Cabinet is two processes behind a reverse proxy. `deploy/nginx.conf` is a workin
 
 ## Deliberate trade-offs
 
-- **Auth is optional at runtime.** Accounts ride on Supabase and switch on with two frontend env vars plus one backend var; with auth off, favorites endpoints return 401 and the frontend keeps browser-local saves. Submissions, reports and moderation still have no write endpoints.
+- **Auth is optional at runtime.** Accounts ride on Supabase and switch on with two frontend env vars plus one backend var; with auth off, favorites and submissions endpoints return 401 and the frontend keeps browser-local saves.
+- **Engagement writes exist; the rest of the workflow is API-first.** Reports (anonymous allowed) and submissions (auth-gated) write to their tables, and the moderation queue is complete behind the moderator role — but there is no moderation interface yet, and an approved submission does not create an artwork until the media-upload milestone arrives.
 - **Counters are denormalized.** Seeded counts are illustrative; favorites and downloads keep them correct with atomic `UPDATE ... RETURNING` statements.
 - **Local media in development.** The storage interface is stable, but R2 is not exercised by tests.
 - **Route-level code splitting.** Every page is a separate chunk loaded behind a `Suspense` boundary inside the layout, and React, React Query and Framer Motion are cached as stable vendor chunks. The initial JavaScript payload is roughly 120 kB gzipped instead of one 540 kB bundle, and supabase-js only loads when auth is enabled.

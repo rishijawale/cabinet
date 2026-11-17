@@ -11,6 +11,7 @@ from app.schemas.archive import (
     PreviewSet,
     TagOut,
 )
+from app.schemas.engagement import ReportOut
 from app.storage import get_storage
 
 
@@ -138,4 +139,18 @@ def collection_detail(
         **base.model_dump(),
         artworks=[artwork_card(item) for item in artworks],
         created_at=collection.created_at,
+    )
+
+
+def report_out(report) -> ReportOut:
+    """Serialise a report row. The artwork relationship must be loaded."""
+    return ReportOut(
+        id=report.id,
+        artwork_slug=report.artwork.slug,
+        artwork_title=report.artwork.title,
+        reason=report.reason,
+        details=report.details,
+        status=report.status.value if hasattr(report.status, "value") else str(report.status),
+        reported_by_account=report.reporter_id is not None,
+        created_at=report.created_at,
     )

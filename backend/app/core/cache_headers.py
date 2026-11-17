@@ -24,7 +24,8 @@ _BROWSABLE = re.compile(r"^/api/v1/(artworks|categories|collections)(/|$)")
 # Per-visitor or mutating surfaces, plus the download endpoint (counter writes
 # and signed URLs): never cached.
 _FRESH = re.compile(
-    r"^/api/v1/(auth|favorites)(/|$)|^/api/v1/artworks/[^/]+/download$"
+    r"^/api/v1/(auth|favorites|submissions|moderation)(/|$)"
+    r"|^/api/v1/artworks/[^/]+/download$"
 )
 
 

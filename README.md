@@ -12,6 +12,7 @@ The design goal is a small, deliberate archive rather than an infinite feed: eve
 - **Object pages** — full preview, character-grid rendering for text art, metadata, license panel, related objects, share and save.
 - **Collections** — five curated exhibitions with featured and standard layouts.
 - **Downloads** — signed/redirected originals where redistribution is permitted; explicit preview-only handling where it is not.
+- **Reports and submissions** — object pages carry a report control (works signed-out); signed-in members can propose new objects through a real submission form, and a moderator-role API covers both queues with a full audit log.
 - **Accounts and favorites** — optional, config-driven Supabase Auth: passwordless sign-in links, server-side favorites with atomic counters, and a one-time merge of browser-saved objects into the account at first sign-in. With no Supabase configuration the app behaves exactly as before.
 - **Editorial pages** — About, submission guidelines, licensing, and plain-language privacy and terms pages.
 - **SEO** — per-route titles, descriptions, canonical URLs and JSON-LD, plus a generated sitemap and robots file.
@@ -20,7 +21,7 @@ The design goal is a small, deliberate archive rather than an infinite feed: eve
 - **Performance** — route-level code splitting with cached vendor chunks, so a first visit ships only the layout and the page it needs; supabase-js loads only when auth is enabled.
 - **Cache policy** — every API and media response carries an explicit `Cache-Control`: browsable archive GETs cache for a minute and media for a week in production, while auth, favorites, downloads, mutations and errors are never cached.
 
-Deferred to later milestones: submissions, moderation/admin tools, the Studio, reporting, user-created collections, R2 storage and FFmpeg derivatives. Production deployment is documented as a reference configuration ([Production deployment](#production-deployment)) rather than an automated pipeline.
+Deferred to later milestones: the moderation admin interface, the Studio, media upload for accepted submissions, user-created collections, R2 storage wiring (the `S3Storage` backend is ready and needs credentials) and FFmpeg derivatives. Production deployment is documented as a reference configuration ([Production deployment](#production-deployment)) rather than an automated pipeline.
 
 ## Stack
 
@@ -223,4 +224,4 @@ The 100 objects are procedurally generated for this project and released under C
 
 ## Status
 
-The Archive MVP is complete and verified locally: browsing, search, downloads, optional config-driven Supabase Auth (disabled until credentials are provided), an explicit response cache policy, a reference production deployment and plain-language legal pages. Submissions and the Studio are intentionally not implemented; the pages that reference them explain that they arrive later.
+The Archive MVP is complete and verified locally: browsing, search, downloads, reports and submissions with a moderator-role queue, optional config-driven Supabase Auth (disabled until credentials are provided), an explicit response cache policy, a reference production deployment and plain-language legal pages. The Studio and the moderation admin interface are intentionally not built; the pages that reference them explain what exists behind the API.

@@ -59,17 +59,15 @@ export function GuidelinesPage() {
         </p>
       </Section>
 
-      <Section title="Before the form exists">
+      <Section title="Submitting">
         <p>
-          Submissions are not open yet. In the meantime,{" "}
-          <Link to="/about" className="text-ink underline decoration-line-strong underline-offset-4 hover:decoration-accent">
-            read about the project
+          The submission form lives on the{" "}
+          <Link to="/submit" className="text-ink underline decoration-line-strong underline-offset-4 hover:decoration-accent">
+            submit page
           </Link>{" "}
-          and{" "}
-          <Link to="/licenses" className="text-ink underline decoration-line-strong underline-offset-4 hover:decoration-accent">
-            the licensing rules
-          </Link>
-          .
+          and needs an account, because every object in the archive has a maker on record. Proposals
+          are reviewed by a person before anything is published; if a proposal is accepted, you will
+          be asked for the original file and its license details.
         </p>
       </Section>
     </EditorialPage>

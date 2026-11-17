@@ -38,3 +38,37 @@ async def get_current_user(
 
 AuthClaims = Annotated[dict, Depends(get_current_claims)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_optional_user(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> User | None:
+    """The account behind the request, or None for anonymous visitors.
+
+    A missing bearer header stays anonymous without touching the network;
+    a present one must verify, so forged tokens are rejected even on
+    optional-auth endpoints.
+    """
+    if bearer_token(request) is None:
+        return None
+    return await get_current_user(session, await get_current_claims(request))
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
+async def get_moderator_user(user: CurrentUser) -> User:
+    """Current user restricted to moderator and admin roles."""
+    from app.core.errors import ForbiddenError
+    from app.models.enums import UserRole
+
+    if user.role not in {UserRole.MODERATOR, UserRole.ADMIN}:
+        raise ForbiddenError(
+            "MODERATOR_REQUIRED",
+            "This endpoint is reserved for archive moderators.",
+        )
+    return user
+
+
+ModeratorUser = Annotated[User, Depends(get_moderator_user)]

@@ -51,14 +51,17 @@ export async function request<T>(
   init?: RequestInit,
 ): Promise<{ data: T; meta: Record<string, unknown> }> {
   // Attach the Supabase session token when one exists; with auth disabled this
-  // resolves to null immediately and every request stays anonymous.
-  const headers: Record<string, string> = { Accept: "application/json" };
+  // resolves to null immediately and every request stays anonymous. Callers may
+  // pass their own headers (Content-Type for JSON bodies); they are merged so
+  // the token survives.
   const token = await getAccessToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const headers = new Headers(init?.headers ?? undefined);
+  headers.set("Accept", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
 
   const response = await fetch(`${API_BASE}${path}${buildQuery(params)}`, {
-    headers,
     ...init,
+    headers,
   });
 
   if (!response.ok) {

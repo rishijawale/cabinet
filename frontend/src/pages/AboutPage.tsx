@@ -39,9 +39,9 @@ export function AboutPage() {
 
       <Section title="What comes next">
         <p>
-          This release is the archive itself: browsing, search, exhibitions and downloads. Accounts,
-          favourites that follow you across devices, submissions and a curation studio are being
-          built next.
+          The archive itself is open: browsing, search, exhibitions, downloads, reports and — for
+          signed-in members — submissions. Media upload for accepted proposals, a moderation
+          interface and the curation studio come next.
         </p>
         <p>
           Until then, the{" "}

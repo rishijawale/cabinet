@@ -387,6 +387,81 @@ Requires a bearer token. Also idempotent; the counter never goes below zero.
 }
 ```
 
+### Report an object
+
+```
+POST /api/v1/artworks/{slug}/report
+```
+
+Works signed-out or signed-in; the report records the account only when a token
+is presented. Rate limited to 10 requests per minute per IP.
+
+```json
+{
+  "reason": "Wrong attribution",
+  "details": "The listed creator is not the maker."
+}
+```
+
+```json
+{
+  "data": { "report_id": "…", "status": "open", "artwork_slug": "quiet-observer" },
+  "meta": { "message": "Thanks. A curator will take a look." }
+}
+```
+
+`reason` is 1–120 characters, `details` up to 2000. Reports always start `open`
+and are moved to `resolved` or `dismissed` through the moderation queue.
+
+### Create a submission
+
+```
+POST /api/v1/submissions
+```
+
+Requires a bearer token. Proposes a new object; media files are exchanged
+after a proposal is accepted, so approval does not yet create an artwork.
+
+```json
+{
+  "title": "Terminal Garden",
+  "description": "A slow ASCII garden for the command line.",
+  "source_url": "https://example.org/garden",
+  "license_confirmation": true,
+  "permission_confirmation": true
+}
+```
+
+Both confirmations must be exactly `true` — the request fails validation
+otherwise. Returns the submission with `status: "submitted"`.
+
+### List my submissions
+
+```
+GET /api/v1/submissions
+```
+
+Requires a bearer token. Paginated; returns the signed-in member's own
+submissions, newest first, including `review_notes` when a moderator has
+decided.
+
+### Moderation queue
+
+Requires a bearer token **and** the moderator or admin role; other accounts
+receive `403 MODERATOR_REQUIRED`, and with auth disabled every route here
+returns `401 AUTH_REQUIRED`.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/v1/moderation/submissions?status=submitted` | Review queue, paginated, optional status filter |
+| `POST /api/v1/moderation/submissions/{id}/review` | `{ "decision": "approved" \| "rejected", "notes": "…" }` |
+| `GET /api/v1/moderation/reports?status=open` | Report queue, paginated, optional status filter |
+| `POST /api/v1/moderation/reports/{id}/review` | `{ "decision": "resolved" \| "dismissed", "notes": "…" }` |
+| `GET /api/v1/moderation/log` | The audit trail of every decision, newest first |
+
+Every review writes a `moderation_actions` row (actor, entity, action, notes),
+so the archive can explain its decisions afterwards.
+
 ## Media files
 
 With `STORAGE_BACKEND=local`, files are served from:
