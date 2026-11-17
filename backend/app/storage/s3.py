@@ -1,10 +1,18 @@
 from pathlib import Path
 
+from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
+
 from app.storage.base import StorageBackend
 
 
 class S3Storage(StorageBackend):
-    """Cloudflare R2 / S3-compatible storage. boto3 is imported lazily."""
+    """Cloudflare R2 / S3-compatible storage. boto3 is imported lazily.
+
+    The client is pinned to path-style addressing and SigV4 signing, which is
+    what R2's account-scoped endpoint expects; presigned download URLs use the
+    same region-less configuration.
+    """
 
     def __init__(
         self,
@@ -25,6 +33,11 @@ class S3Storage(StorageBackend):
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
             region_name="auto",
+            config=Config(
+                signature_version="s3v4",
+                s3={"addressing_style": "path"},
+                retries={"max_attempts": 3},
+            ),
         )
 
     def public_url(self, key: str) -> str:
@@ -46,7 +59,9 @@ class S3Storage(StorageBackend):
         try:
             self.client.head_object(Bucket=self.bucket, Key=key)
             return True
-        except Exception:  # noqa: BLE001 - boto raises several error types
+        except (ClientError, BotoCoreError):
+            # 404 surfaces as ClientError; network problems as BotoCoreError.
+            # Either way the caller treats the object as missing.
             return False
 
     def local_path(self, key: str) -> Path | None:

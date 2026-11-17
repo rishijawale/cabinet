@@ -102,6 +102,8 @@ Validation errors are `422 VALIDATION_ERROR` with field-level details. Unexpecte
 
 `StorageBackend` defines `public_url`, `signed_url`, `save`, `exists` and `local_path`. Development uses `LocalStorage`, which serves files from `/media`; production can use `S3Storage` for Cloudflare R2 without changing callers. Preview variants are fixed-name WebP files: `-thumb`, `-card` and `-full`.
 
+With `STORAGE_BACKEND=s3` every `R2_*` variable must be set — `get_storage()` refuses to start otherwise, naming the missing variables. `S3Storage` talks to the account-scoped R2 endpoint with path-style addressing and SigV4 signing, serves media URLs from `R2_PUBLIC_BASE_URL`, and issues time-limited signed URLs for originals (`DOWNLOAD_URL_TTL_SECONDS`, default 300). The seed and validation scripts route through the same interface, so they write to R2 when it is configured.
+
 ### Cache policy
 
 `app/core/cache_headers.py` applies an explicit `Cache-Control` header to every response that does not set one. Caching is a production-only feature: any non-production environment (`ENVIRONMENT=development`, or `test` as CI uses) bypasses caching entirely — API responses are `no-store` and media is `no-cache`, so ETag revalidation keeps repeat fetches cheap while counter changes and re-seeded previews stay visible immediately.

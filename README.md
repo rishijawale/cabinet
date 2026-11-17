@@ -196,7 +196,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-public-key
 
 `deploy/nginx.conf` is a reference configuration for the intended shape: nginx serves the built frontend and reverse-proxies the API and media to uvicorn.
 
-1. Configure the backend for production in `backend/.env`: `ENVIRONMENT=production`, real origins in `ALLOWED_ORIGINS`, the public site URL in `PUBLIC_SITE_URL`, and — ideally — `STORAGE_BACKEND=s3` with `R2_*` credentials instead of local disk. Startup logs a warning for each of these that still looks like a development leftover.
+1. Configure the backend for production in `backend/.env`: `ENVIRONMENT=production`, real origins in `ALLOWED_ORIGINS`, the public site URL in `PUBLIC_SITE_URL`, and — ideally — `STORAGE_BACKEND=s3` with `R2_*` credentials instead of local disk (the storage layer validates the configuration at startup and serves media from the R2 public base URL). Startup logs a warning for each of these that still looks like a development leftover.
 2. Build the frontend with `VITE_API_BASE_URL` pointed at the same origin's API path (for example `https://your-origin/api/v1`), plus the Supabase variables if accounts are enabled.
 3. Regenerate the sitemap and robots file with the real origin: `python scripts/generate_sitemap.py --base-url https://your-origin`.
 4. Run the API under a process manager (systemd, a container, etc.):

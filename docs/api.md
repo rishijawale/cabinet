@@ -473,6 +473,10 @@ http://localhost:8000/media/artworks/{slug}/preview-full.webp
 http://localhost:8000/media/artworks/{slug}/original.{ext}
 ```
 
+With `STORAGE_BACKEND=s3` (Cloudflare R2), preview and media URLs come from
+`R2_PUBLIC_BASE_URL` and originals are delivered through the download
+endpoint's time-limited signed URL instead of a stable public path.
+
 The `original.*` path only exists for redistributable objects. Client applications should use `preview.*`, `text_url` or the download endpoint rather than constructing original URLs.
 
 ## Caching
