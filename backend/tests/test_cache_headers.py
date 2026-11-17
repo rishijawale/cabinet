@@ -33,6 +33,19 @@ async def test_development_media_revalidates(archive: AsyncClient) -> None:
     assert response.headers["cache-control"] == "no-cache"
 
 
+async def test_test_environment_bypasses_caching(
+    archive: AsyncClient, monkeypatch
+) -> None:
+    """Regression: CI runs with ENVIRONMENT=test, which must behave like dev."""
+    monkeypatch.setattr(settings, "environment", "test")
+
+    listing = await archive.get("/api/v1/artworks", params={"limit": 1})
+    assert listing.headers["cache-control"] == "no-store"
+
+    media = await archive.get(MEDIA_CARD)
+    assert media.headers["cache-control"] == "no-cache"
+
+
 async def test_production_caches_browsable_gets(archive: AsyncClient, production) -> None:
     listing = await archive.get("/api/v1/artworks", params={"limit": 1})
     assert listing.headers["cache-control"] == "public, max-age=60"

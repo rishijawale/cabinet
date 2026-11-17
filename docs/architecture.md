@@ -104,7 +104,7 @@ Validation errors are `422 VALIDATION_ERROR` with field-level details. Unexpecte
 
 ### Cache policy
 
-`app/core/cache_headers.py` applies an explicit `Cache-Control` header to every response that does not set one. Development bypasses caching entirely: API responses are `no-store` and media is `no-cache`, so ETag revalidation keeps repeat fetches cheap while counter changes and re-seeded previews stay visible immediately.
+`app/core/cache_headers.py` applies an explicit `Cache-Control` header to every response that does not set one. Caching is a production-only feature: any non-production environment (`ENVIRONMENT=development`, or `test` as CI uses) bypasses caching entirely — API responses are `no-store` and media is `no-cache`, so ETag revalidation keeps repeat fetches cheap while counter changes and re-seeded previews stay visible immediately.
 
 In production (`ENVIRONMENT=production`) the policy is:
 

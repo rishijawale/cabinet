@@ -166,7 +166,7 @@ Backend settings live in `backend/.env` and are documented in `.env.example`:
 - `STORAGE_BACKEND` — `local` or `s3`; `MEDIA_ROOT` and `MEDIA_BASE_URL` apply to local storage.
 - `R2_*` — Cloudflare R2 credentials and public base URL when using S3 storage.
 - `DOWNLOAD_URL_TTL_SECONDS` — lifetime for signed download URLs.
-- `API_CACHE_MAX_AGE` and `MEDIA_CACHE_MAX_AGE` — cache windows for browsable archive GETs (default 60 s) and media (default one week). They apply in production only; development serves `no-store`/`no-cache` regardless.
+- `API_CACHE_MAX_AGE` and `MEDIA_CACHE_MAX_AGE` — cache windows for browsable archive GETs (default 60 s) and media (default one week). They apply in production only; non-production environments serve `no-store`/`no-cache` regardless.
 - `SUPABASE_URL` — leave empty to disable auth; set it to enable the auth and favorites endpoints. `SUPABASE_JWKS_URL`, `SUPABASE_AUDIENCE`, `SUPABASE_ISSUER` and `SUPABASE_LEEWAY_SECONDS` have sensible defaults derived from the project URL.
 
 The frontend reads `VITE_API_BASE_URL` plus the optional `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` from `frontend/.env`. Both Supabase values must be set for sign-in to appear; see [Enabling accounts](#enabling-accounts).

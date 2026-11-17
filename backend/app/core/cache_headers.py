@@ -1,13 +1,12 @@
 """Explicit response cache policy.
 
-Development serves everything with `no-store` (API) or `no-cache` (media, where
-ETag revalidation keeps it fast) so counter changes and re-seeded previews are
-seen immediately. Production marks browsable archive GETs cacheable for a short
-window while keeping auth surfaces, mutations, errors and downloads uncached.
-
-Media previews and originals are deterministic outputs of the seed pipeline,
-so they are safe to cache for a week; the window is configurable via
-`MEDIA_CACHE_MAX_AGE`.
+Caching is a production-only feature. In production, browsable archive GETs are
+marked cacheable for a short window while auth surfaces, mutations, errors and
+downloads stay uncached; `/media/**` caches for a week since previews are
+deterministic outputs of the seed pipeline. Any other environment
+(development, test) bypasses caching entirely: `no-store` for the API and
+`no-cache` for media, where ETag revalidation keeps round-trips cheap.
+Windows are configurable via `API_CACHE_MAX_AGE` and `MEDIA_CACHE_MAX_AGE`.
 """
 
 from __future__ import annotations
@@ -30,10 +29,15 @@ _FRESH = re.compile(
 
 
 def _cache_control_for(path: str, method: str, status: int) -> str | None:
+    # Caching switches on only in production; development and test
+    # environments stay freshly validated (media via ETag revalidation).
+    if not settings.is_production:
+        if path.startswith("/media") and status == 200:
+            return "no-cache"
+        return "no-store"
+
     if path.startswith("/media"):
         if status == 200:
-            if settings.is_development:
-                return "no-cache"
             return f"public, max-age={settings.media_cache_max_age}"
         return "no-store"
 
@@ -46,8 +50,6 @@ def _cache_control_for(path: str, method: str, status: int) -> str | None:
     if _FRESH.search(path):
         return "no-store"
     if _BROWSABLE.match(path):
-        if settings.is_development:
-            return "no-store"
         return f"public, max-age={settings.api_cache_max_age}"
     return "no-store"
 
