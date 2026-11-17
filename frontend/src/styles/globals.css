@@ -125,6 +125,10 @@
     @apply text-[15px] leading-7 text-muted sm:text-base sm:leading-8;
   }
 
+  .prose-editorial code {
+    @apply rounded-sm bg-surface-muted px-1.5 py-0.5 font-mono text-[0.85em] text-ink;
+  }
+
   .prose-editorial p + p {
     @apply mt-5;
   }

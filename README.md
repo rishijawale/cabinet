@@ -13,7 +13,7 @@ The design goal is a small, deliberate archive rather than an infinite feed: eve
 - **Collections** — five curated exhibitions with featured and standard layouts.
 - **Downloads** — signed/redirected originals where redistribution is permitted; explicit preview-only handling where it is not.
 - **Accounts and favorites** — optional, config-driven Supabase Auth: passwordless sign-in links, server-side favorites with atomic counters, and a one-time merge of browser-saved objects into the account at first sign-in. With no Supabase configuration the app behaves exactly as before.
-- **Editorial pages** — About, submission guidelines, licensing, privacy and terms (draft copy).
+- **Editorial pages** — About, submission guidelines, licensing, and plain-language privacy and terms pages.
 - **SEO** — per-route titles, descriptions, canonical URLs and JSON-LD, plus a generated sitemap and robots file.
 - **Local saved objects** — pre-sign-in saves live in the browser and migrate to the account on sign-in.
 - **Accessibility and theming** — keyboard-friendly controls, reduced-motion support, light and dark themes.
@@ -223,4 +223,4 @@ The 100 objects are procedurally generated for this project and released under C
 
 ## Status
 
-The archive milestone is complete and verified locally, and optional Supabase Auth is implemented (config-driven, disabled until credentials are provided). Submissions and the Studio are intentionally not implemented; the pages that reference them explain that they arrive later.
+The Archive MVP is complete and verified locally: browsing, search, downloads, optional config-driven Supabase Auth (disabled until credentials are provided), an explicit response cache policy, a reference production deployment and plain-language legal pages. Submissions and the Studio are intentionally not implemented; the pages that reference them explain that they arrive later.

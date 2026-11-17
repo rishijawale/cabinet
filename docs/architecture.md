@@ -195,4 +195,4 @@ Cabinet is two processes behind a reverse proxy. `deploy/nginx.conf` is a workin
 - **Counters are denormalized.** Seeded counts are illustrative; favorites and downloads keep them correct with atomic `UPDATE ... RETURNING` statements.
 - **Local media in development.** The storage interface is stable, but R2 is not exercised by tests.
 - **Route-level code splitting.** Every page is a separate chunk loaded behind a `Suspense` boundary inside the layout, and React, React Query and Framer Motion are cached as stable vendor chunks. The initial JavaScript payload is roughly 120 kB gzipped instead of one 540 kB bundle, and supabase-js only loads when auth is enabled.
-- **Draft legal copy.** Privacy and terms are explicitly marked as drafts and are release blockers before public submissions.
+- **Legal copy is plain-language, not lawyer-reviewed.** Privacy and terms are written in plain language by the maintainers, accurate to what the code actually does, and will be re-reviewed before public submissions open — those will record more about submitters.
