@@ -294,7 +294,7 @@ async def validate() -> Report:
                 )
 
     if manifest:
-        for slug, entry in manifest.items():
+        for slug, _entry in manifest.items():
             if slug not in slugs:
                 report.error(f"manifest lists {slug}, which is not published in the database")
 

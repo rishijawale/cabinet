@@ -11,7 +11,7 @@ import asyncio
 import hashlib
 import json
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,7 +45,7 @@ from scripts.asset_factory import (  # noqa: E402
     slugify,
 )
 
-NOW = datetime(2026, 11, 10, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
 EXTERNAL_ONLY = {8, 47, 86}
 EXTERNAL_CREATORS = ["Studio Kō", "N. Ardent", "Vela Archives"]
 EXTERNAL_DESCRIPTIONS = {
@@ -247,7 +247,7 @@ async def main() -> None:
             users[username] = await upsert_user(session, username)
 
         category_map: dict[str, Category] = {}
-        for slug, name, description, cover_slug, order in CATEGORIES:
+        for slug, name, description, _cover_slug, order in CATEGORIES:
             category = (
                 await session.execute(select(Category).where(Category.slug == slug))
             ).scalar_one_or_none()
@@ -414,7 +414,7 @@ async def main() -> None:
         await session.flush()
 
         # Category covers use a published object from that category.
-        for slug, category in category_map.items():
+        for _slug, category in category_map.items():
             if category.cover_image:
                 continue
             cover = (

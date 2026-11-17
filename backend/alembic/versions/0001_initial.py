@@ -8,6 +8,7 @@ Create Date: 2026-11-17
 from collections.abc import Sequence
 
 from alembic import op
+
 from app.core.db import Base
 from app.models import *  # noqa: F401,F403
 
