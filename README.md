@@ -14,6 +14,7 @@ The design goal is a small, deliberate archive rather than an infinite feed: eve
 - **SEO** — per-route titles, descriptions, canonical URLs and JSON-LD, plus a generated sitemap and robots file.
 - **Local saved objects** — browser-only saves until accounts ship.
 - **Accessibility and theming** — keyboard-friendly controls, reduced-motion support, light and dark themes.
+- **Performance** — route-level code splitting with cached vendor chunks, so a first visit ships only the layout and the page it needs.
 
 Deferred to later milestones: authentication (Supabase), favourites that sync across devices, submissions, moderation/admin tools, the Studio, reporting, user-created collections, R2 storage, FFmpeg derivatives and production deployment.
 

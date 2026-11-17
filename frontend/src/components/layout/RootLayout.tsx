@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
 import { Footer } from "./Footer";
 import { Header } from "./Header";
+import { RouteFallback } from "./RouteFallback";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -27,7 +28,9 @@ export function RootLayout() {
       <Header />
       <main id="main" className="flex-1">
         <div key={pathname} className="fade-up">
-          <Outlet />
+          <Suspense fallback={<RouteFallback />}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
       <Footer />

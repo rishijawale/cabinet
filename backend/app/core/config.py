@@ -16,7 +16,9 @@ class Settings(BaseSettings):
 
     environment: str = "development"
     database_url: str = "postgresql+asyncpg://cabinet:cabinet@127.0.0.1:5432/cabinet"
-    allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    allowed_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
+    )
     public_site_url: str = "http://localhost:5173"
 
     storage_backend: str = "local"

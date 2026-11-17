@@ -1,19 +1,39 @@
+import { lazy, type ComponentType } from "react";
 import { Route, Routes } from "react-router-dom";
 
 import { RootLayout } from "./components/layout/RootLayout";
-import { AboutPage } from "./pages/AboutPage";
-import { CollectionDetailPage } from "./pages/CollectionDetailPage";
-import { CollectionsPage } from "./pages/CollectionsPage";
-import { ComingSoonPage } from "./pages/ComingSoonPage";
-import { ExplorePage } from "./pages/ExplorePage";
-import { GuidelinesPage } from "./pages/GuidelinesPage";
-import { HomePage } from "./pages/HomePage";
-import { LicensesPage } from "./pages/LicensesPage";
-import { NotFoundPage } from "./pages/NotFoundPage";
-import { ObjectDetailPage } from "./pages/ObjectDetailPage";
-import { PrivacyPage } from "./pages/PrivacyPage";
-import { SavedPage } from "./pages/SavedPage";
-import { TermsPage } from "./pages/TermsPage";
+
+/**
+ * Wrap a named page export in React.lazy. Every route is a separate chunk so
+ * the first paint only ships the layout, router and shared UI.
+ */
+function lazyPage<K extends string, M extends Record<K, ComponentType>>(
+  load: () => Promise<M>,
+  exportName: K,
+) {
+  return lazy(async () => ({ default: (await load())[exportName] }));
+}
+
+const HomePage = lazyPage(() => import("./pages/HomePage"), "HomePage");
+const ExplorePage = lazyPage(() => import("./pages/ExplorePage"), "ExplorePage");
+const ObjectDetailPage = lazyPage(() => import("./pages/ObjectDetailPage"), "ObjectDetailPage");
+const CollectionsPage = lazyPage(() => import("./pages/CollectionsPage"), "CollectionsPage");
+const CollectionDetailPage = lazyPage(
+  () => import("./pages/CollectionDetailPage"),
+  "CollectionDetailPage",
+);
+const SavedPage = lazyPage(() => import("./pages/SavedPage"), "SavedPage");
+const AboutPage = lazyPage(() => import("./pages/AboutPage"), "AboutPage");
+const GuidelinesPage = lazyPage(() => import("./pages/GuidelinesPage"), "GuidelinesPage");
+const LicensesPage = lazyPage(() => import("./pages/LicensesPage"), "LicensesPage");
+const PrivacyPage = lazyPage(() => import("./pages/PrivacyPage"), "PrivacyPage");
+const TermsPage = lazyPage(() => import("./pages/TermsPage"), "TermsPage");
+const NotFoundPage = lazyPage(() => import("./pages/NotFoundPage"), "NotFoundPage");
+
+// This page takes a prop, so it is wrapped directly instead of through the helper.
+const ComingSoonPage = lazy(() =>
+  import("./pages/ComingSoonPage").then((module) => ({ default: module.ComingSoonPage })),
+);
 
 export function App() {
   return (

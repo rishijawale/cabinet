@@ -160,5 +160,5 @@ Explore state lives in the URL: `q`, `category`, `sort`, `format`, `media_type`,
 - **No auth yet.** Every write endpoint that would need identity (favourites, submissions, reports, moderation) is absent rather than half-open.
 - **Counters are denormalized.** Seeded counts are illustrative; future writes must continue to use atomic `UPDATE ... RETURNING` statements.
 - **Local media in development.** The storage interface is stable, but R2 is not exercised by tests.
-- **One JavaScript bundle.** The build warns about the main chunk size; route-level code splitting is a post-MVP improvement.
+- **Route-level code splitting.** Every page is a separate chunk loaded behind a `Suspense` boundary inside the layout, and React, React Query and Framer Motion are cached as stable vendor chunks. The initial JavaScript payload is roughly 120 kB gzipped instead of one 540 kB bundle.
 - **Draft legal copy.** Privacy and terms are explicitly marked as drafts and are release blockers before accounts or public submissions.
