@@ -1,4 +1,5 @@
 import type { ArtworkQuery } from "../../types/api";
+import { getAccessToken } from "../supabase";
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ??
@@ -49,8 +50,14 @@ export async function request<T>(
   params?: Record<string, QueryValue>,
   init?: RequestInit,
 ): Promise<{ data: T; meta: Record<string, unknown> }> {
+  // Attach the Supabase session token when one exists; with auth disabled this
+  // resolves to null immediately and every request stays anonymous.
+  const headers: Record<string, string> = { Accept: "application/json" };
+  const token = await getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const response = await fetch(`${API_BASE}${path}${buildQuery(params)}`, {
-    headers: { Accept: "application/json" },
+    headers,
     ...init,
   });
 

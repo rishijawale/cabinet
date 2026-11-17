@@ -23,6 +23,7 @@ const CollectionDetailPage = lazyPage(
   "CollectionDetailPage",
 );
 const SavedPage = lazyPage(() => import("./pages/SavedPage"), "SavedPage");
+const LoginPage = lazyPage(() => import("./pages/LoginPage"), "LoginPage");
 const AboutPage = lazyPage(() => import("./pages/AboutPage"), "AboutPage");
 const GuidelinesPage = lazyPage(() => import("./pages/GuidelinesPage"), "GuidelinesPage");
 const LicensesPage = lazyPage(() => import("./pages/LicensesPage"), "LicensesPage");
@@ -51,6 +52,7 @@ export function App() {
         <Route path="privacy" element={<PrivacyPage />} />
         <Route path="terms" element={<TermsPage />} />
         <Route path="saved" element={<SavedPage />} />
+        <Route path="login" element={<LoginPage />} />
         <Route path="studio" element={<ComingSoonPage page="/studio" />} />
         <Route path="submit" element={<ComingSoonPage page="/submit" />} />
         <Route path="*" element={<NotFoundPage />} />

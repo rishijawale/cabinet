@@ -109,11 +109,11 @@ Validation errors are `422 VALIDATION_ERROR` with field-level details. Unexpecte
 ```
 src/
   components/      layout, gallery, collections, UI primitives
-  hooks/           theme, saved objects, document metadata, debounce
+  hooks/           theme, auth, saved objects, document metadata, debounce
   lib/             formatting and class-name helpers
   pages/           one module per route
-  services/api/    fetch wrapper and archive endpoints
-  services/        React Query keys and hooks
+  services/api/    fetch wrapper, archive and account endpoints
+  services/        React Query keys and hooks; Supabase client
   styles/          Tailwind v4 entry and design tokens
   types/           API response types
 ```
@@ -126,7 +126,8 @@ src/
 | `/explore`, `/explore/:category` | Searchable, filterable gallery |
 | `/object/:slug` | Object detail with download, save and share |
 | `/collections`, `/collections/:slug` | Exhibitions index and detail |
-| `/saved` | Objects saved in local storage |
+| `/saved` | Saved objects (account or local storage) |
+| `/login` | Sign-in page (magic link) |
 | `/about`, `/guidelines`, `/licenses`, `/privacy`, `/terms` | Editorial and legal pages |
 | `/studio`, `/submit` | Coming-soon pages |
 | `*` | Not-found page |
@@ -135,14 +136,20 @@ All routes render inside `RootLayout`, which provides the header, mobile navigat
 
 ### Data fetching
 
-TanStack Query owns server state. Query keys are centralized in `services/queries.ts`; list queries keep previous data while the next page or filter loads. Artwork detail queries use the slug. After a successful download the detail cache is updated in place so the counter changes immediately.
+TanStack Query owns server state. Query keys are centralized in `services/queries.ts`; list queries keep previous data while the next page or filter loads. Artwork detail queries use the slug. After a successful download the detail cache is updated in place so the counter changes immediately. Favorites live under a single `["favorites"]` key, refreshed after every save/remove.
 
 Explore state lives in the URL: `q`, `category`, `sort`, `format`, `media_type`, `orientation`, `tag` and `page`. Search input is debounced and written back with `replace`, so filtering is deep-linkable and survives refreshes.
+
+### Authentication
+
+`AuthProvider` wraps the router. It is config-driven: with both `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` set, `@supabase/supabase-js` is dynamically imported (so it never loads when auth is off), sessions persist in local storage and the access token is attached to every archive API request by the fetch wrapper. `/auth/me` provisions the account server-side on first sign-in.
+
+Sign-in is a passwordless magic link sent from `/login` with `emailRedirectTo` set to the same page. On the first signed-in session, favorites saved in the browser are merged to the server once and the local store is cleared; from then on the Saved page, saved badge and object save button all read server favorites, with optimistic updates on save/remove. When auth is disabled or the visitor is signed out, saving behaves exactly as before (browser-local).
 
 ### Local state
 
 - Theme is stored under `cabinet-theme` and applied before React mounts by a small inline script, avoiding a flash.
-- Saved objects are stored under `cabinet-saved` with enough metadata to render the saved page without extra requests. This is intentionally browser-local until authentication ships.
+- Saved objects are stored under `cabinet-saved` with enough metadata to render the saved page without extra requests. This store is the pre-sign-in buffer: once signed in its contents migrate to the account.
 
 ### SEO
 
@@ -150,15 +157,15 @@ Explore state lives in the URL: `q`, `category`, `sort`, `format`, `media_type`,
 
 ## Verification
 
-- Backend: pytest with httpx ASGI transport. Tests run against the seeded database inside a transaction that is rolled back, and use a dedicated NullPool engine so async connections stay on the test's event loop.
+- Backend: pytest with httpx ASGI transport. Tests run against the seeded database inside a transaction that is rolled back, and use a dedicated NullPool engine so async connections stay on the test's event loop. Auth tests verify real ES256-signed tokens; only the JWKS transport is stubbed.
 - Frontend: TypeScript typecheck, Vitest unit tests for formatting helpers, production Vite build.
 - Integration: headless browser checks covered every route, search/filter/pagination, save flow, mobile navigation, downloads and both themes during development.
 - Assets: `scripts/validate_assets.py` verifies previews, originals, dimensions, UTF-8 text, seed hashes, license coherence and orphaned media.
 
 ## Deliberate trade-offs
 
-- **No auth yet.** Every write endpoint that would need identity (favourites, submissions, reports, moderation) is absent rather than half-open.
-- **Counters are denormalized.** Seeded counts are illustrative; future writes must continue to use atomic `UPDATE ... RETURNING` statements.
+- **Auth is optional at runtime.** Accounts ride on Supabase and switch on with two frontend env vars plus one backend var; with auth off, favorites endpoints return 401 and the frontend keeps browser-local saves. Submissions, reports and moderation still have no write endpoints.
+- **Counters are denormalized.** Seeded counts are illustrative; favorites and downloads keep them correct with atomic `UPDATE ... RETURNING` statements.
 - **Local media in development.** The storage interface is stable, but R2 is not exercised by tests.
-- **Route-level code splitting.** Every page is a separate chunk loaded behind a `Suspense` boundary inside the layout, and React, React Query and Framer Motion are cached as stable vendor chunks. The initial JavaScript payload is roughly 120 kB gzipped instead of one 540 kB bundle.
-- **Draft legal copy.** Privacy and terms are explicitly marked as drafts and are release blockers before accounts or public submissions.
+- **Route-level code splitting.** Every page is a separate chunk loaded behind a `Suspense` boundary inside the layout, and React, React Query and Framer Motion are cached as stable vendor chunks. The initial JavaScript payload is roughly 120 kB gzipped instead of one 540 kB bundle, and supabase-js only loads when auth is enabled.
+- **Draft legal copy.** Privacy and terms are explicitly marked as drafts and are release blockers before public submissions.

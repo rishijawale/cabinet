@@ -38,6 +38,28 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret"
     supabase_url: str = ""
     supabase_jwks_url: str = ""
+    supabase_audience: str = "authenticated"
+    supabase_issuer: str = ""
+    supabase_leeway_seconds: int = 30
+
+    @property
+    def auth_enabled(self) -> bool:
+        """Auth is opt-in: set SUPABASE_URL to turn it on, leave empty to disable."""
+        return bool(self.supabase_url.strip())
+
+    @property
+    def auth_jwks_url(self) -> str:
+        configured = self.supabase_jwks_url.strip()
+        if configured:
+            return configured
+        return f"{self.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+
+    @property
+    def auth_issuer(self) -> str:
+        configured = self.supabase_issuer.strip()
+        if configured:
+            return configured
+        return f"{self.supabase_url.rstrip('/')}/auth/v1"
 
     @property
     def allowed_origins_list(self) -> list[str]:

@@ -84,3 +84,12 @@ export function useSaved() {
 
   return { items, toggle, remove, isSaved };
 }
+
+/** Non-hook accessors for the local store, used by the sign-in merge. */
+export function getLocalSavedSlugs(): string[] {
+  return cache.map((item) => item.slug);
+}
+
+export function clearLocalSaved(): void {
+  write([]);
+}

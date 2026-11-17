@@ -9,6 +9,8 @@ import {
   fetchCollections,
   fetchRandomArtwork,
 } from "./api/archive";
+import { fetchFavorites } from "./api/account";
+import { useAuth } from "../hooks/useAuth";
 
 export const queryKeys = {
   artworks: (query: ArtworkQuery) => ["artworks", query] as const,
@@ -17,6 +19,7 @@ export const queryKeys = {
   categories: ["categories"] as const,
   collections: ["collections"] as const,
   collection: (slug: string) => ["collection", slug] as const,
+  favorites: ["favorites"] as const,
 };
 
 export function useArtworks(query: ArtworkQuery) {
@@ -65,5 +68,15 @@ export function useCollection(slug: string | undefined) {
     queryKey: queryKeys.collection(slug ?? ""),
     queryFn: () => fetchCollection(slug as string),
     enabled: Boolean(slug),
+  });
+}
+
+/** Server-side favorites; only runs while the visitor is signed in. */
+export function useFavorites() {
+  const { status } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.favorites,
+    queryFn: fetchFavorites,
+    enabled: status === "signedIn",
   });
 }

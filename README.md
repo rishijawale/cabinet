@@ -12,21 +12,23 @@ The design goal is a small, deliberate archive rather than an infinite feed: eve
 - **Object pages** — full preview, character-grid rendering for text art, metadata, license panel, related objects, share and save.
 - **Collections** — five curated exhibitions with featured and standard layouts.
 - **Downloads** — signed/redirected originals where redistribution is permitted; explicit preview-only handling where it is not.
+- **Accounts and favorites** — optional, config-driven Supabase Auth: passwordless sign-in links, server-side favorites with atomic counters, and a one-time merge of browser-saved objects into the account at first sign-in. With no Supabase configuration the app behaves exactly as before.
 - **Editorial pages** — About, submission guidelines, licensing, privacy and terms (draft copy).
 - **SEO** — per-route titles, descriptions, canonical URLs and JSON-LD, plus a generated sitemap and robots file.
-- **Local saved objects** — browser-only saves until accounts ship.
+- **Local saved objects** — pre-sign-in saves live in the browser and migrate to the account on sign-in.
 - **Accessibility and theming** — keyboard-friendly controls, reduced-motion support, light and dark themes.
-- **Performance** — route-level code splitting with cached vendor chunks, so a first visit ships only the layout and the page it needs.
+- **Performance** — route-level code splitting with cached vendor chunks, so a first visit ships only the layout and the page it needs; supabase-js loads only when auth is enabled.
 
-Deferred to later milestones: authentication (Supabase), favourites that sync across devices, submissions, moderation/admin tools, the Studio, reporting, user-created collections, R2 storage, FFmpeg derivatives and production deployment.
+Deferred to later milestones: submissions, moderation/admin tools, the Studio, reporting, user-created collections, R2 storage, FFmpeg derivatives and production deployment.
 
 ## Stack
 
 | Layer | Choice |
 | --- | --- |
-| API | Python 3.11, FastAPI, SQLAlchemy 2 (async), asyncpg, Alembic |
+| API | Python 3.11, FastAPI, SQLAlchemy 2 (async), asyncpg, Alembic, PyJWT |
 | Database | PostgreSQL 16 with full-text search and `pg_trgm` |
 | Frontend | React 19, Vite 6, TypeScript, React Router, TanStack Query |
+| Auth | Supabase Auth (JWT via JWKS), optional at runtime |
 | Styling | Tailwind CSS v4, Instrument Serif / Inter / JetBrains Mono |
 | Media | Local filesystem in development; S3-compatible interface ready for Cloudflare R2 |
 | Tests | pytest + httpx (API), Vitest (frontend utilities) |
@@ -40,6 +42,7 @@ scripts/            Seed pipeline, asset validator, sitemap generator
 docs/               Architecture, API and licensing notes
 docker-compose.yml  PostgreSQL for local development
 .env.example        Backend environment template
+frontend/.env.example  Frontend environment template (API base URL, Supabase)
 ```
 
 ## Quick start
@@ -162,8 +165,29 @@ Backend settings live in `backend/.env` and are documented in `.env.example`:
 - `STORAGE_BACKEND` — `local` or `s3`; `MEDIA_ROOT` and `MEDIA_BASE_URL` apply to local storage.
 - `R2_*` — Cloudflare R2 credentials and public base URL when using S3 storage.
 - `DOWNLOAD_URL_TTL_SECONDS` — lifetime for signed download URLs.
+- `SUPABASE_URL` — leave empty to disable auth; set it to enable the auth and favorites endpoints. `SUPABASE_JWKS_URL`, `SUPABASE_AUDIENCE`, `SUPABASE_ISSUER` and `SUPABASE_LEEWAY_SECONDS` have sensible defaults derived from the project URL.
 
-The frontend reads `VITE_API_BASE_URL` from `frontend/.env`.
+The frontend reads `VITE_API_BASE_URL` plus the optional `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` from `frontend/.env`. Both Supabase values must be set for sign-in to appear; see [Enabling accounts](#enabling-accounts).
+
+## Enabling accounts
+
+Auth is off by default and needs no credentials to build or run. To turn it on:
+
+1. Create a project at [supabase.com](https://supabase.com). No database integration is needed — Cabinet uses Supabase Auth only.
+2. In **Authentication → URL Configuration**, add your frontend origin (for development `http://localhost:5173`) to the allowed redirect URLs.
+3. In **Authentication → Sign In / Providers**, enable **Email** with "Confirm email" off so passwordless magic links work immediately.
+4. Set the environment variables:
+
+```bash
+# backend/.env
+SUPABASE_URL=https://your-project.supabase.co
+
+# frontend/.env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-public-key
+```
+
+5. Restart the API and rebuild or restart the frontend. `/login` now sends magic links, favorites move server-side, and the saved page follows the account between devices. JWTs are verified against the project's published JWKS; the anon key is a public identifier and safe to ship in the browser.
 
 ## Documentation
 
@@ -177,4 +201,4 @@ The 100 objects are procedurally generated for this project and released under C
 
 ## Status
 
-The archive milestone is complete and verified locally. Authentication, submissions and the Studio are intentionally not implemented; the pages that reference them explain that they arrive later.
+The archive milestone is complete and verified locally, and optional Supabase Auth is implemented (config-driven, disabled until credentials are provided). Submissions and the Studio are intentionally not implemented; the pages that reference them explain that they arrive later.

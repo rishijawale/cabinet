@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Text
+from sqlalchemy import String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -14,7 +14,9 @@ if TYPE_CHECKING:
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("supabase_sub", name="uq_users_supabase_sub"),)
 
+    supabase_sub: Mapped[str | None] = mapped_column(String(64))
     email: Mapped[str | None] = mapped_column(String(320), unique=True)
     username: Mapped[str] = mapped_column(String(40), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)

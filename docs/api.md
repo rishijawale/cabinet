@@ -48,10 +48,26 @@ Lists are wrapped in the same envelope, with pagination in `meta`:
 | --- | --- |
 | 200 | Success |
 | 400 | Invalid filter or sort value |
+| 401 | Authentication required or token invalid |
+| 403 | Account suspended |
 | 404 | Object or route not found |
 | 422 | Parameter validation failed |
 | 429 | Download rate limit exceeded |
 | 500 | Unhandled server error |
+
+### Authentication
+
+Auth is **opt-in and config-driven**. When `SUPABASE_URL` is empty, authenticated
+endpoints respond `401 AUTH_REQUIRED` and the archive behaves anonymously.
+When it is set, requests present a Supabase access token:
+
+```
+Authorization: Bearer <supabase-access-token>
+```
+
+Tokens are verified against the project's published JWKS (ES256/RS256), with
+`aud: "authenticated"` and `iss: {SUPABASE_URL}/auth/v1`. The first valid token
+provisions (or email-links) a local account keyed by the token's `sub` claim.
 
 ### Pagination
 
@@ -293,6 +309,83 @@ Returns the collection card plus:
 - `created_at` — collection creation timestamp.
 
 Missing or non-public collections return `404 COLLECTION_NOT_FOUND`.
+
+### Current account
+
+```
+GET /api/v1/auth/me
+```
+
+Requires a bearer token. Verifies it, provisions the account if this is the
+first time the token's identity has been seen, and returns the profile.
+
+```json
+{
+  "data": {
+    "id": "…",
+    "username": "collector-example",
+    "display_name": "Collector Example",
+    "email": "collector@example.com",
+    "avatar_url": null,
+    "status": "active",
+    "created_at": "2026-11-17T12:00:00Z"
+  },
+  "meta": {}
+}
+```
+
+Error cases: `401 AUTH_REQUIRED` (no token, or auth disabled), `401
+TOKEN_INVALID` (bad signature, expired, wrong audience/issuer or unknown key),
+`403 ACCOUNT_SUSPENDED`.
+
+### List favorites
+
+```
+GET /api/v1/favorites
+```
+
+Requires a bearer token. Returns the caller's saved objects, newest first, as
+artwork cards.
+
+```json
+{
+  "data": [{ "…artwork card": "…" }],
+  "meta": { "total": 1 }
+}
+```
+
+### Save an object
+
+```
+POST /api/v1/favorites/{slug}
+```
+
+Requires a bearer token. Idempotent — saving twice leaves the state unchanged.
+
+```json
+{
+  "data": { "saved": true, "already_saved": false, "favorite_count": 8 },
+  "meta": {}
+}
+```
+
+`favorite_count` feeds the popularity score and is updated atomically with the
+favorite row. Unknown slugs return `404 ARTWORK_NOT_FOUND`.
+
+### Remove a favorite
+
+```
+DELETE /api/v1/favorites/{slug}
+```
+
+Requires a bearer token. Also idempotent; the counter never goes below zero.
+
+```json
+{
+  "data": { "saved": false, "favorite_count": 7 },
+  "meta": {}
+}
+```
 
 ## Media files
 

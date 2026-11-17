@@ -3,8 +3,10 @@ import { Bookmark, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
+import { useAuth } from "../../hooks/useAuth";
 import { useSaved } from "../../hooks/useSaved";
 import { useTheme } from "../../hooks/useTheme";
+import { useFavorites } from "../../services/queries";
 import { cn } from "../../lib/cn";
 
 const NAV_LINKS = [
@@ -19,8 +21,13 @@ export function Header() {
   const { pathname, search } = useLocation();
   const [open, setOpen] = useState(false);
   const { theme, toggle } = useTheme();
+  const { status, account } = useAuth();
   const { items } = useSaved();
+  const favorites = useFavorites();
   const reduceMotion = useReducedMotion();
+  // Signed-in visitors see their server favorites; everyone else the local store.
+  const savedCount =
+    status === "signedIn" ? (favorites.data?.length ?? items.length) : items.length;
 
   useEffect(() => {
     setOpen(false);
@@ -89,13 +96,23 @@ export function Header() {
           </Link>
           <Link
             to="/saved"
-            aria-label={`Saved objects${items.length ? `, ${items.length} saved` : ""}`}
+            aria-label={`Saved objects${savedCount ? `, ${savedCount} saved` : ""}`}
             className="relative flex h-9 w-9 items-center justify-center text-muted transition-colors hover:text-ink"
           >
             <Bookmark className="h-[18px] w-[18px]" />
-            {items.length > 0 && (
+            {savedCount > 0 && (
               <span className="absolute right-1 top-1.5 h-1.5 w-1.5 rounded-full bg-accent" />
             )}
+          </Link>
+          <Link
+            to="/login"
+            className="hidden h-9 items-center px-2 text-[13px] text-muted transition-colors hover:text-ink lg:flex"
+          >
+            {status === "signedIn" && account
+              ? account.display_name
+              : status === "disabled"
+                ? null
+                : "Sign in"}
           </Link>
           <button
             type="button"
@@ -155,8 +172,21 @@ export function Header() {
                   <span className="display text-4xl text-ink transition-colors group-hover:text-accent">
                     Saved
                   </span>
-                  <span className="label-tight">{items.length}</span>
+                  <span className="label-tight">{savedCount}</span>
                 </Link>
+                {status !== "disabled" && (
+                  <Link
+                    to="/login"
+                    className="group flex items-baseline justify-between border-b border-line py-5"
+                  >
+                    <span className="display text-4xl text-ink transition-colors group-hover:text-accent">
+                      {status === "signedIn" && account ? account.display_name : "Sign in"}
+                    </span>
+                    <span className="label-tight" aria-hidden="true">
+                      →
+                    </span>
+                  </Link>
+                )}
               </nav>
 
               <div className="mt-12 flex items-center justify-between border-t border-line pt-6">

@@ -9,7 +9,7 @@ import {
   Link2,
   Loader2,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -17,6 +17,7 @@ import { ArtworkGrid } from "../components/gallery/ArtworkGrid";
 import { Badge } from "../components/ui/Badge";
 import { Button, buttonStyles } from "../components/ui/Button";
 import { Skeleton } from "../components/ui/Skeleton";
+import { useAuth } from "../hooks/useAuth";
 import { useDocumentMeta } from "../hooks/useDocumentMeta";
 import { useSaved } from "../hooks/useSaved";
 import { cn } from "../lib/cn";
@@ -29,8 +30,9 @@ import {
   licenseSummary,
 } from "../lib/format";
 import { requestDownload } from "../services/api/archive";
-import { queryKeys, useArtwork } from "../services/queries";
-import type { ArtworkDetail, DownloadInfo } from "../types/api";
+import { addFavorite, removeFavorite } from "../services/api/account";
+import { queryKeys, useArtwork, useFavorites } from "../services/queries";
+import type { Artwork, ArtworkDetail, DownloadInfo } from "../types/api";
 
 type DownloadState =
   | { status: "idle" }
@@ -42,9 +44,39 @@ export function ObjectDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const artwork = useArtwork(slug);
   const { isSaved, toggle } = useSaved();
+  const { status } = useAuth();
+  const favorites = useFavorites();
   const queryClient = useQueryClient();
   const [download, setDownload] = useState<DownloadState>({ status: "idle" });
   const [copied, setCopied] = useState(false);
+
+  const signedIn = status === "signedIn";
+
+  const saveMutation = useMutation({
+    mutationFn: (nextSaved: boolean) =>
+      nextSaved ? addFavorite(slug ?? "") : removeFavorite(slug ?? ""),
+    onMutate: async (nextSaved) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.favorites });
+      const previous = queryClient.getQueryData<Artwork[]>(queryKeys.favorites);
+      if (previous && data) {
+        queryClient.setQueryData<Artwork[]>(
+          queryKeys.favorites,
+          nextSaved
+            ? [data, ...previous.filter((item) => item.slug !== data.slug)]
+            : previous.filter((item) => item.slug !== data.slug),
+        );
+      }
+      return { previous };
+    },
+    onError: (_error, _nextSaved, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.favorites, context.previous);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.favorites });
+    },
+  });
 
   const data = artwork.data;
 
@@ -133,7 +165,10 @@ export function ObjectDetailPage() {
     );
   }
 
-  const saved = isSaved(data.slug);
+  const saved = signedIn
+    ? (favorites.data ?? []).some((item) => item.slug === data.slug)
+    : isSaved(data.slug);
+  const saving = saveMutation.isPending;
 
   return (
     <article className="container-page py-8 sm:py-12">
@@ -179,7 +214,10 @@ export function ObjectDetailPage() {
               </button>
               <button
                 type="button"
-                onClick={() => toggle(data)}
+                onClick={() =>
+                  signedIn ? saveMutation.mutate(!saved) : toggle(data)
+                }
+                disabled={saving}
                 aria-pressed={saved}
                 className={cn(
                   "inline-flex h-9 items-center gap-2 border px-3 text-[12px] transition-colors",
@@ -193,7 +231,13 @@ export function ObjectDetailPage() {
                 ) : (
                   <Bookmark className="h-3.5 w-3.5" />
                 )}
-                {saved ? "Saved" : "Save"}
+                {saving
+                  ? saved
+                    ? "Removing…"
+                    : "Saving…"
+                  : saved
+                    ? "Saved"
+                    : "Save"}
               </button>
             </div>
           </div>

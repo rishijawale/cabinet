@@ -4,15 +4,25 @@ The archive tests run against the development database that has been seeded with
 `scripts/seed_archive.py`. Every test is wrapped in a transaction that is rolled
 back afterwards, so view/download counters and other writes never leak between
 tests.
+
+Auth tests verify Supabase tokens for real against locally generated ES256
+keys; only the JWKS transport is replaced by a stub cache.
 """
 
+import uuid
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 
+import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import ec
 from httpx import ASGITransport, AsyncClient
+from jwt import PyJWK
+from jwt.algorithms import ECAlgorithm
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from app.core import auth as auth_module
 from app.core.config import settings
 from app.core.db import get_session
 from app.main import app
@@ -21,6 +31,9 @@ from app.main import app
 # pytest-asyncio (one loop per test). Tests get a dedicated NullPool engine so
 # every connection belongs to the loop that created it.
 test_engine = create_async_engine(settings.database_url, poolclass=NullPool)
+
+AUTH_KID = "cabinet-test-key"
+AUTH_ISSUER = "https://cabinet-test.supabase.co/auth/v1"
 
 
 @pytest.fixture
@@ -64,3 +77,72 @@ async def client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
             yield http
     finally:
         app.dependency_overrides.clear()
+
+
+class StubJWKSCache:
+    """Serves one fixed key instead of fetching the JWKS endpoint."""
+
+    def __init__(self, jwk: PyJWK) -> None:
+        self._key = jwk
+        self.calls = 0
+
+    async def get_key(self, jwks_url: str, kid: str | None) -> PyJWK:
+        self.calls += 1
+        if kid != self._key.key_id:
+            raise auth_module.UnknownKeyError(kid)
+        return self._key
+
+
+@pytest.fixture
+def es256():
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    jwk = ECAlgorithm("ES256").to_jwk(private_key, as_dict=True)
+    jwk.update({"kid": AUTH_KID, "alg": "ES256", "use": "sig"})
+    return private_key, PyJWK.from_dict(jwk)
+
+
+@pytest.fixture
+def auth_settings(monkeypatch):
+    """Point auth at a fake Supabase project; auth is disabled by default."""
+    monkeypatch.setattr(settings, "supabase_url", "https://cabinet-test.supabase.co")
+    monkeypatch.setattr(settings, "supabase_jwks_url", "")
+    monkeypatch.setattr(settings, "supabase_audience", "authenticated")
+    monkeypatch.setattr(settings, "supabase_issuer", "")
+    monkeypatch.setattr(settings, "supabase_leeway_seconds", 30)
+    return settings
+
+
+@pytest.fixture
+def stub_cache(monkeypatch, es256) -> StubJWKSCache:
+    _, jwk = es256
+    stub = StubJWKSCache(jwk)
+    monkeypatch.setattr(auth_module, "_cache", stub)
+    return stub
+
+
+def mint_token(
+    private_key, sub: str | None = None, overrides: dict | None = None
+) -> str:
+    now = datetime.now(UTC)
+    payload: dict = {
+        "iss": AUTH_ISSUER,
+        "sub": sub or str(uuid.uuid4()),
+        "aud": "authenticated",
+        "exp": now + timedelta(hours=1),
+        "iat": now,
+        "email": "collector@example.com",
+        "user_metadata": {"name": "Collector Example"},
+    }
+    payload.update(overrides or {})
+    return jwt.encode(
+        payload, private_key, algorithm="ES256", headers={"kid": AUTH_KID}
+    )
+
+
+def bearer(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+# Apply to any test that should run with auth enabled; tests that must prove
+# the disabled default stay unmarked.
+ENABLED_AUTH = pytest.mark.usefixtures("auth_settings", "stub_cache")
