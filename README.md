@@ -1,5 +1,7 @@
 # Cabinet
 
+[![CI](https://github.com/rishijawale/cabinet/actions/workflows/ci.yml/badge.svg)](https://github.com/rishijawale/cabinet/actions/workflows/ci.yml)
+
 A curated digital archive for ASCII art, wallpapers, pixel art and the visual culture that grew up around computers. This repository contains the full Archive MVP: a FastAPI + PostgreSQL API, a React + Vite frontend, and 100 procedurally generated seed objects — 97 released under CC0 or CC-BY, and three preview-only records that exercise the non-redistribution path.
 
 The design goal is a small, deliberate archive rather than an infinite feed: every object has a maker, a license and a reason to be here.
@@ -142,6 +144,13 @@ npm test
 npm run build
 Pop-Location
 ```
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and on pull requests:
+
+- **API and database** — ruff, Alembic migrations against a PostgreSQL 16 service, the full seed pipeline, `validate_assets.py --strict`, then pytest.
+- **Web client** — `npm ci`, TypeScript typecheck, Vitest, and a production Vite build.
 
 ## Configuration
 
