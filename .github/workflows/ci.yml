@@ -69,7 +69,7 @@ jobs:
         run: python ../scripts/validate_assets.py --strict
 
       - name: Run tests
-        run: pytest -q
+        run: python -m pytest -q
 
   frontend:
     name: Web client
