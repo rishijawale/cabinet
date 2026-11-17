@@ -26,6 +26,9 @@ backend/media/
 media/
 *.log
 
+# Verification screenshots written to the repo root by .dev/verify scripts
+/*.png
+
 # OS / editors
 .DS_Store
 Thumbs.db

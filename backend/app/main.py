@@ -14,6 +14,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import api_router
+from app.core.cache_headers import CacheControlMiddleware
 from app.core.config import settings
 from app.core.errors import AppError
 from app.core.rate_limit import limiter
@@ -37,6 +38,19 @@ def _error(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Cabinet API starting in %s mode", settings.environment)
+    if settings.is_production:
+        local_origins = [
+            origin
+            for origin in settings.allowed_origins_list
+            if "localhost" in origin or "127.0.0.1" in origin
+        ]
+        if local_origins:
+            logger.warning(
+                "ALLOWED_ORIGINS includes local addresses in production: %s",
+                ", ".join(local_origins),
+            )
+        if settings.storage_backend.lower() == "local":
+            logger.warning("Serving media from local disk; consider S3/R2 in production.")
     yield
 
 
@@ -53,6 +67,7 @@ def create_app() -> FastAPI:
 
     app.state.limiter = limiter
     app.add_middleware(SlowAPIMiddleware)
+    app.add_middleware(CacheControlMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins_list,

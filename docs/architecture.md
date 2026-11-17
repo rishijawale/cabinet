@@ -32,7 +32,7 @@ The frontend and API are separate origins in development. CORS origins are contr
 | `app/services` | Pydantic serializers that turn ORM objects into API shapes. |
 | `app/models` | SQLAlchemy mappings and Postgres enums. |
 | `app/schemas` | Response models (`ArtworkCard`, `ArtworkDetail`, etc.). |
-| `app/core` | Settings, database session, pagination, errors, responses, rate limiting. |
+| `app/core` | Settings, database session, pagination, errors, responses, rate limiting, cache policy. |
 | `app/storage` | Storage protocol with local filesystem and S3/R2 implementations. |
 
 ### Request flow
@@ -53,7 +53,7 @@ Core archive:
 - `categories` — display name, slug, description, cover image URL, display order and active flag.
 - `tags` — unique name and slug, many-to-many with artworks.
 - `licenses` — identifier plus explicit booleans for attribution, commercial use, modification and redistribution.
-- `users` — archive creators and curators. The schema supports email, role and suspension, but no auth flow is exposed in this milestone.
+- `users` — archive creators, curators and provisioned accounts. With auth enabled, a verified Supabase sign-in auto-creates a row keyed by the token subject, linked to an existing creator by email when it matches.
 - `collections`, `collection_items` — curated exhibitions with a cover artwork, curator, ordering and public/featured flags.
 - `downloads` — one row per successful download, used for auditing and future analytics.
 - `favorites`, `submissions`, `reports`, `moderation_actions` — schema present for later milestones; endpoints are not exposed.
@@ -101,6 +101,20 @@ Validation errors are `422 VALIDATION_ERROR` with field-level details. Unexpecte
 ### Storage
 
 `StorageBackend` defines `public_url`, `signed_url`, `save`, `exists` and `local_path`. Development uses `LocalStorage`, which serves files from `/media`; production can use `S3Storage` for Cloudflare R2 without changing callers. Preview variants are fixed-name WebP files: `-thumb`, `-card` and `-full`.
+
+### Cache policy
+
+`app/core/cache_headers.py` applies an explicit `Cache-Control` header to every response that does not set one. Development bypasses caching entirely: API responses are `no-store` and media is `no-cache`, so ETag revalidation keeps repeat fetches cheap while counter changes and re-seeded previews stay visible immediately.
+
+In production (`ENVIRONMENT=production`) the policy is:
+
+| Response | Header |
+| --- | --- |
+| Browsable archive GETs (`/artworks`, `/categories`, `/collections`) | `public, max-age=API_CACHE_MAX_AGE` (default 60) |
+| `/media/**` previews and originals (200) | `public, max-age=MEDIA_CACHE_MAX_AGE` (default one week) |
+| Downloads, auth, favorites, mutations, errors, `/health`, everything else | `no-store` |
+
+Media files are deterministic outputs of the seed pipeline, so a week-long cache window is safe. Counters trade a little freshness for absorbing repeat traffic: a listing can lag behind the true counts by up to the cache window. The full policy table lives in [api.md](api.md#caching).
 
 ## Frontend
 
@@ -154,6 +168,19 @@ Sign-in is a passwordless magic link sent from `/login` with `emailRedirectTo` s
 ### SEO
 
 `useDocumentMeta` updates the document title, description, canonical link, Open Graph/Twitter tags and optional JSON-LD per route. Object pages emit `VisualArtwork` structured data; collection pages emit `CollectionPage` with `hasPart`. The sitemap and robots file are generated from the database by `scripts/generate_sitemap.py`. The checked-in copies point at the placeholder origin `https://cabinet.example` so a production build never ships `localhost` URLs; regenerate them with the real origin as part of deployment. Because this is a client-rendered SPA, crawlers that do not execute JavaScript see the shell metadata from `index.html`; richer static rendering or prerendering belongs to the deployment milestone.
+
+## Production deployment
+
+Cabinet is two processes behind a reverse proxy. `deploy/nginx.conf` is a working reference configuration.
+
+- **API** — run uvicorn without `--reload`, under a process manager:
+  `uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips="127.0.0.1"`.
+  `--proxy-headers` matters: rate limiting and CORS otherwise see the proxy address instead of the real client IP from `X-Forwarded-For`.
+- **Reverse proxy** — nginx serves the built frontend (`frontend/dist`) with content-hashed `/assets/` cached `immutable` for a year, `index.html` and the SPA fallback always revalidated, and proxies `/api/`, `/media/` and `/health` to uvicorn. Cache headers for API and media come from the API itself, so the proxy needs no per-path header rules.
+- **Environment** — set `ENVIRONMENT=production` to switch the cache policy on. Startup then logs a warning for two common leftovers: local origins still in `ALLOWED_ORIGINS` and media still served from local disk instead of object storage.
+- **Frontend env** — `VITE_API_BASE_URL` set to the same origin's API path (for example `https://your-origin/api/v1`), plus the Supabase variables if accounts are enabled.
+- **Metadata** — regenerate `frontend/public/sitemap.xml` and `robots.txt` with the real origin: `python scripts/generate_sitemap.py --base-url https://your-origin`. The committed copies use the placeholder origin `https://cabinet.example`.
+- **TLS** — terminate in front of nginx (`certbot --nginx`, or a load balancer) and redirect `:80` to `:443`; the reference config listens on `:80` for exactly that layer to sit in front.
 
 ## Verification
 

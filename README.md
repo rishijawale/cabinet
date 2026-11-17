@@ -18,8 +18,9 @@ The design goal is a small, deliberate archive rather than an infinite feed: eve
 - **Local saved objects** — pre-sign-in saves live in the browser and migrate to the account on sign-in.
 - **Accessibility and theming** — keyboard-friendly controls, reduced-motion support, light and dark themes.
 - **Performance** — route-level code splitting with cached vendor chunks, so a first visit ships only the layout and the page it needs; supabase-js loads only when auth is enabled.
+- **Cache policy** — every API and media response carries an explicit `Cache-Control`: browsable archive GETs cache for a minute and media for a week in production, while auth, favorites, downloads, mutations and errors are never cached.
 
-Deferred to later milestones: submissions, moderation/admin tools, the Studio, reporting, user-created collections, R2 storage, FFmpeg derivatives and production deployment.
+Deferred to later milestones: submissions, moderation/admin tools, the Studio, reporting, user-created collections, R2 storage and FFmpeg derivatives. Production deployment is documented as a reference configuration ([Production deployment](#production-deployment)) rather than an automated pipeline.
 
 ## Stack
 
@@ -165,6 +166,7 @@ Backend settings live in `backend/.env` and are documented in `.env.example`:
 - `STORAGE_BACKEND` — `local` or `s3`; `MEDIA_ROOT` and `MEDIA_BASE_URL` apply to local storage.
 - `R2_*` — Cloudflare R2 credentials and public base URL when using S3 storage.
 - `DOWNLOAD_URL_TTL_SECONDS` — lifetime for signed download URLs.
+- `API_CACHE_MAX_AGE` and `MEDIA_CACHE_MAX_AGE` — cache windows for browsable archive GETs (default 60 s) and media (default one week). They apply in production only; development serves `no-store`/`no-cache` regardless.
 - `SUPABASE_URL` — leave empty to disable auth; set it to enable the auth and favorites endpoints. `SUPABASE_JWKS_URL`, `SUPABASE_AUDIENCE`, `SUPABASE_ISSUER` and `SUPABASE_LEEWAY_SECONDS` have sensible defaults derived from the project URL.
 
 The frontend reads `VITE_API_BASE_URL` plus the optional `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` from `frontend/.env`. Both Supabase values must be set for sign-in to appear; see [Enabling accounts](#enabling-accounts).
@@ -188,6 +190,26 @@ VITE_SUPABASE_ANON_KEY=your-anon-public-key
 ```
 
 5. Restart the API and rebuild or restart the frontend. `/login` now sends magic links, favorites move server-side, and the saved page follows the account between devices. JWTs are verified against the project's published JWKS; the anon key is a public identifier and safe to ship in the browser.
+
+## Production deployment
+
+`deploy/nginx.conf` is a reference configuration for the intended shape: nginx serves the built frontend and reverse-proxies the API and media to uvicorn.
+
+1. Configure the backend for production in `backend/.env`: `ENVIRONMENT=production`, real origins in `ALLOWED_ORIGINS`, the public site URL in `PUBLIC_SITE_URL`, and — ideally — `STORAGE_BACKEND=s3` with `R2_*` credentials instead of local disk. Startup logs a warning for each of these that still looks like a development leftover.
+2. Build the frontend with `VITE_API_BASE_URL` pointed at the same origin's API path (for example `https://your-origin/api/v1`), plus the Supabase variables if accounts are enabled.
+3. Regenerate the sitemap and robots file with the real origin: `python scripts/generate_sitemap.py --base-url https://your-origin`.
+4. Run the API under a process manager (systemd, a container, etc.):
+
+   ```bash
+   uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2 \
+     --proxy-headers --forwarded-allow-ips="127.0.0.1"
+   ```
+
+   `--proxy-headers` matters: rate limiting and CORS otherwise see the proxy address instead of the real client IP from `X-Forwarded-For`.
+5. Point `deploy/nginx.conf` at `frontend/dist`, replace `server_name`, and reload. `/assets/` is cached `immutable` for a year, `index.html` and the SPA fallback always revalidate, and `/api/` plus `/media/` are proxied with the cache headers the API sets itself.
+6. Terminate TLS in front of nginx (`certbot --nginx` or a load balancer) and redirect `:80` to `:443`.
+
+With `ENVIRONMENT=production` the API's cache policy switches on: browsable archive GETs are `public, max-age=60`, media is `public, max-age=604800`, and downloads, auth, favorites, mutations and errors stay `no-store`. Both windows are configurable via `API_CACHE_MAX_AGE` and `MEDIA_CACHE_MAX_AGE`; the full policy table is in [docs/api.md](docs/api.md).
 
 ## Documentation
 

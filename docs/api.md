@@ -402,4 +402,18 @@ The `original.*` path only exists for redistributable objects. Client applicatio
 
 ## Caching
 
-Public GETs are cacheable but currently served with framework defaults. The frontend caches list and detail responses in memory for 60 seconds and keeps previous page data while a new request loads. Production deployment should add explicit cache headers and a CDN policy for media.
+Every response carries an explicit `Cache-Control` header, applied by
+`app/core/cache_headers.py`:
+
+| Response | Development | Production |
+| --- | --- | --- |
+| `GET /api/v1/artworks*`, `/categories`, `/collections*` (200) | `no-store` | `public, max-age=60` |
+| `/media/**` previews and originals (200) | `no-cache` (ETag revalidation) | `public, max-age=604800` |
+| Downloads, `/auth/**`, `/favorites/**` | `no-store` | `no-store` |
+| Mutations, errors, `/health`, anything else | `no-store` | `no-store` |
+
+Rationale: browsable archive responses change rarely and safely absorb a one-minute CDN/browser cache; media previews are deterministic outputs of the seed pipeline and cache for a week (`MEDIA_CACHE_MAX_AGE`); anything per-visitor (auth, favorites) or mutating (downloads, writes) is never cached. Development bypasses caching entirely so counter changes and re-seeded previews are seen immediately. Windows are configurable via `API_CACHE_MAX_AGE` and `MEDIA_CACHE_MAX_AGE`.
+
+The frontend additionally caches responses in memory (React Query, 60 seconds) and keeps previous page data while a new request loads.
+
+For the built frontend's own assets — hashed bundles cached `immutable` for a year, `index.html` always revalidated — see `deploy/nginx.conf` and the production deployment section of the README.

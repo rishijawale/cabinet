@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     default_page_size: int = 24
     max_page_size: int = 48
 
+    # Cache policy. Public archive GETs are cached briefly so browsers and CDNs
+    # absorb repeat traffic; auth surfaces and mutations are never cached.
+    api_cache_max_age: int = 60
+    media_cache_max_age: int = 604800  # one week; previews regenerate deterministically
+
     secret_key: str = "dev-secret"
     supabase_url: str = ""
     supabase_jwks_url: str = ""
@@ -73,6 +78,10 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.environment.lower() in {"development", "dev", "local"}
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() in {"production", "prod"}
 
 
 @lru_cache
